@@ -40,3 +40,25 @@ INSERT INTO incoming_orders (id, product_id, quantity, status, expected_delivery
 VALUES (1, 1, 3, 'PENDING', CURRENT_TIMESTAMP + INTERVAL '3 days', CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 ALTER SEQUENCE incoming_orders_id_seq RESTART WITH 2;
+
+-- Seed Marketplace Sellers
+INSERT INTO marketplace_sellers (id, name, rating, base_delivery_days) VALUES (1, 'TechStore', 4.8, 2) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_sellers (id, name, rating, base_delivery_days) VALUES (2, 'ElectroShop', 4.2, 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_sellers (id, name, rating, base_delivery_days) VALUES (3, 'OfficeDepot', 4.6, 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_sellers (id, name, rating, base_delivery_days) VALUES (4, 'FastDelivery', 3.9, 1) ON CONFLICT (id) DO NOTHING;
+ALTER SEQUENCE marketplace_sellers_id_seq RESTART WITH 5;
+
+-- Seed Marketplace Offers
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (1, 1, 1, 52000.00, 10, 150.00, 1) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (2, 1, 2, 50500.00, 5, 200.00, 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (3, 1, 4, 54000.00, 15, 0.00, 1) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (4, 2, 1, 38000.00, 8, 100.00, 2) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (5, 2, 2, 37200.00, 3, 150.00, 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (6, 2, 4, 39500.00, 10, 0.00, 1) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (7, 3, 3, 4500.00, 20, 50.00, 2) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (8, 3, 1, 4800.00, 10, 100.00, 1) ON CONFLICT (id) DO NOTHING;
+INSERT INTO marketplace_offers (id, product_id, seller_id, price, stock_quantity, shipping_fee, delivery_time_days) VALUES (9, 3, 2, 4300.00, 2, 120.00, 4) ON CONFLICT (id) DO NOTHING;
+ALTER SEQUENCE marketplace_offers_id_seq RESTART WITH 10;
+
