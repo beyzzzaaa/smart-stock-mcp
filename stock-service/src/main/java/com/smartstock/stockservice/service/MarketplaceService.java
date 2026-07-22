@@ -36,8 +36,8 @@ public class MarketplaceService {
         return offerRepository.searchOffers(query);
     }
 
-    public MarketplaceComparisonResponseDto compareOffers(String sku) {
-        List<MarketplaceOffer> offers = offerRepository.findByProductSku(sku);
+    public MarketplaceComparisonResponseDto compareOffers(Long productId) {
+        List<MarketplaceOffer> offers = offerRepository.findByProductId(productId);
         if (offers.isEmpty()) {
             return MarketplaceComparisonResponseDto.builder()
                     .offers(new ArrayList<>())
@@ -149,8 +149,28 @@ public class MarketplaceService {
                     .build());
         }
 
-        // Sort by TOPSIS score descending
-        dtos.sort((a, b) -> Double.compare(b.getTopsisScore(), a.getTopsisScore()));
+        // Sort by:
+        // 1. TOPSIS score descending
+        // 2. Total Cost ascending (cheaper is better)
+        // 3. Delivery Time days ascending (faster is better)
+        // 4. Seller Rating descending (higher is better)
+        dtos.sort((a, b) -> {
+            int scoreCompare = Double.compare(b.getTopsisScore(), a.getTopsisScore());
+            if (scoreCompare != 0) {
+                return scoreCompare;
+            }
+            double costA = a.getPrice() + a.getShippingFee();
+            double costB = b.getPrice() + b.getShippingFee();
+            int costCompare = Double.compare(costA, costB);
+            if (costCompare != 0) {
+                return costCompare;
+            }
+            int deliveryCompare = Integer.compare(a.getDeliveryTimeDays(), b.getDeliveryTimeDays());
+            if (deliveryCompare != 0) {
+                return deliveryCompare;
+            }
+            return Double.compare(b.getSeller().getRating(), a.getSeller().getRating());
+        });
 
         MarketplaceOfferDto bestChoice = dtos.get(0);
 
@@ -164,8 +184,8 @@ public class MarketplaceService {
         return offerRepository.findByProductSku(sku);
     }
 
-    public boolean checkAvailability(String sku, Long sellerId, Integer quantity) {
-        Optional<MarketplaceOffer> offerOpt = offerRepository.findByProductSkuAndSellerId(sku, sellerId);
+    public boolean checkAvailability(Long offerId, Integer quantity) {
+        Optional<MarketplaceOffer> offerOpt = offerRepository.findById(offerId);
         return offerOpt.map(offer -> offer.getStockQuantity() >= quantity).orElse(false);
     }
 
@@ -184,11 +204,11 @@ public class MarketplaceService {
                 .build();
 
         for (CreateDraftRequestDto.Item item : request.getItems()) {
-            MarketplaceOffer offer = offerRepository.findByProductSkuAndSellerId(item.getSku(), item.getSellerId())
-                    .orElseThrow(() -> new IllegalArgumentException("No offer found for SKU '" + item.getSku() + "' from Seller ID " + item.getSellerId()));
+            MarketplaceOffer offer = offerRepository.findById(item.getOfferId())
+                    .orElseThrow(() -> new IllegalArgumentException("No offer found with ID " + item.getOfferId()));
 
             if (offer.getStockQuantity() < item.getQuantity()) {
-                throw new IllegalStateException("Insufficient stock for SKU '" + item.getSku() + "' from Seller ID " + item.getSellerId() + ". Available: " + offer.getStockQuantity());
+                throw new IllegalStateException("Insufficient stock for Offer ID " + item.getOfferId() + ". Available: " + offer.getStockQuantity());
             }
 
             double itemCost = (offer.getPrice() * item.getQuantity()) + offer.getShippingFee();

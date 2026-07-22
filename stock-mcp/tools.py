@@ -98,21 +98,21 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="create_incoming_order",
-            description="Create a pending incoming order to record expected stock replenishment.",
+            description="Create a pending incoming order for stock replenishment.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "product_id": {
                         "type": "integer",
-                        "description": "The database ID of the product"
+                        "description": "ID of the product to order."
                     },
                     "quantity": {
                         "type": "integer",
-                        "description": "Quantity to order"
+                        "description": "Quantity to order."
                     },
                     "expected_delivery_date": {
                         "type": "string",
-                        "description": "Optional ISO-8601 delivery date string (e.g., '2026-07-25T14:00:00')"
+                        "description": "Expected delivery date (ISO-8601 string, optional)."
                     }
                 },
                 "required": ["product_id", "quantity"]
@@ -120,7 +120,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="receive_order",
-            description="Mark a pending order as RECEIVED and add its quantity to current stock levels.",
+            description="Receive a pending incoming order, adding its quantity to current stock level.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -143,7 +143,7 @@ async def list_tools() -> list[Tool]:
     ]
 
 
-@server.tool_call()
+@server.call_tool()
 async def handle_call_tool(name: str, arguments: dict | None) -> list[TextContent]:
     """Execute the tool selected by LLM using ProductService"""
     arguments = arguments or {}

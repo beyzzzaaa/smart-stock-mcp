@@ -46,6 +46,21 @@ class MarketplaceOffer(BaseModel):
     shippingFee: float
     deliveryTimeDays: int
 
+class MarketplaceOfferDto(BaseModel):
+    id: int
+    productSku: str
+    productName: str
+    seller: MarketplaceSeller
+    price: float
+    stockQuantity: int
+    shippingFee: float
+    deliveryTimeDays: int
+    topsisScore: float
+
+class MarketplaceComparisonResponse(BaseModel):
+    offers: List[MarketplaceOfferDto]
+    bestChoice: Optional[MarketplaceOfferDto] = None
+
 class MarketplacePurchaseDraftItem(BaseModel):
     id: int
     product: Product
@@ -55,13 +70,7 @@ class MarketplacePurchaseDraftItem(BaseModel):
     shippingFee: float
     deliveryTimeDays: int
 
-class MarketplacePurchaseDraft(BaseModel):
-    id: int
-    totalCost: float
-    status: str
-    items: List[MarketplacePurchaseDraftItem]
-
-class MarketplaceOrderItem(BaseModel):
+class MarketplacePurchaseDraftItemResponse(BaseModel):
     id: int
     product: Product
     quantity: int
@@ -70,11 +79,26 @@ class MarketplaceOrderItem(BaseModel):
     shippingFee: float
     deliveryTimeDays: int
 
-class MarketplaceOrder(BaseModel):
+class MarketplacePurchaseDraftResponse(BaseModel):
+    id: int
+    totalCost: float
+    status: str
+    items: List[MarketplacePurchaseDraftItemResponse]
+
+class MarketplaceOrderItemResponse(BaseModel):
+    id: int
+    product: Product
+    quantity: int
+    seller: MarketplaceSeller
+    price: float
+    shippingFee: float
+    deliveryTimeDays: int
+
+class MarketplaceOrderResponse(BaseModel):
     id: int
     draftId: int
     totalCost: float
     status: str
     createdAt: str
     expectedDeliveryDate: str
-    items: List[MarketplaceOrderItem]
+    items: List[MarketplaceOrderItemResponse]

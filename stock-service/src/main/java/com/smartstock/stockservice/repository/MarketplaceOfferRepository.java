@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface MarketplaceOfferRepository extends JpaRepository<MarketplaceOffer, Long> {
     List<MarketplaceOffer> findByProductSku(String sku);
 
+    List<MarketplaceOffer> findByProductId(Long productId);
+
     Optional<MarketplaceOffer> findByProductSkuAndSellerId(String sku, Long sellerId);
 
     @Query("SELECT o FROM MarketplaceOffer o WHERE " +

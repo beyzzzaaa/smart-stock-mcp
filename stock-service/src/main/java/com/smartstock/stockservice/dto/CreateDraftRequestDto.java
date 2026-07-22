@@ -15,8 +15,7 @@ public class CreateDraftRequestDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Item {
-        private String sku;
+        private Long offerId;
         private Integer quantity;
-        private Long sellerId;
     }
 }

@@ -30,16 +30,15 @@ public class MarketplaceController {
     }
 
     @GetMapping("/offers/compare")
-    public ResponseEntity<MarketplaceComparisonResponseDto> getOffersForSku(@RequestParam String sku) {
-        return ResponseEntity.ok(marketplaceService.compareOffers(sku));
+    public ResponseEntity<MarketplaceComparisonResponseDto> getOffersForProduct(@RequestParam Long productId) {
+        return ResponseEntity.ok(marketplaceService.compareOffers(productId));
     }
 
     @GetMapping("/check-availability")
     public ResponseEntity<Boolean> checkAvailability(
-            @RequestParam String sku,
-            @RequestParam Long sellerId,
+            @RequestParam Long offerId,
             @RequestParam Integer quantity) {
-        return ResponseEntity.ok(marketplaceService.checkAvailability(sku, sellerId, quantity));
+        return ResponseEntity.ok(marketplaceService.checkAvailability(offerId, quantity));
     }
 
     @PostMapping("/drafts")
