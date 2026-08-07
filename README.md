@@ -25,45 +25,7 @@ The system consists of three main layers :
      * Orchestrator / Client Layer : Python (mcp, requests), Qwen LLM
      * MCP Server Layer : Python (mcp, httpx, pydantic)
      * Backend Service Layer : Spring Boot(Java 21, Spring Data JPA, Hibernate, Lombok), Maven, PostegreSQL
-## Project Structure 
 
-smart-stock-mcp/
-│
-├── llm-host/                  # Orchestrator / Client Layer (Python)
-│   ├── app.py                 # Main orchestrator application loop & execution manager
-│   ├── llm.py                 # API client wrapper for LLM requests
-│   ├── mcp_client.py          # Manager for connecting to MCP Servers
-│   ├── prompt.py              # LLM system prompts & output transformers
-│   └── requirements.txt       # Python dependencies for the host
-│
-├── stock-mcp/                 # Stock Management MCP Server (Python)
-│   ├── tools.py               # Exposes stock & inventory tools to LLM
-│   ├── services.py            # Interfaces with stock-service backend REST APIs
-│   ├── models.py              # Stock data schemas
-│   └── requirements.txt       # Server dependencies
-│
-├── marketplace-mcp/           # Marketplace Integration MCP Server (Python)
-│   ├── tools.py               # Exposes marketplace tools (with TOPSIS optimization)
-│   ├── services.py            # Interfaces with marketplace-service backend REST APIs
-│   ├── models.py              # Marketplace data schemas
-│   └── requirements.txt       # Server dependencies
-│
-├── stock-service/             # Backend Business Logic Service (Spring Boot & Java)
-│   ├── pom.xml                # Maven project configuration
-│   └── src/main/
-│       ├── java/com/smartstock/stockservice/
-│       │   ├── controller/    # REST endpoints (Product, Order, Marketplace)
-│       │   ├── service/       # Inventory and purchasing business logic
-│       │   ├── model/         # JPA database entities (Database mapping)
-│       │   ├── repository/    # Spring Data JPA repositories
-│       │   ├── dto/           # Data Transfer Objects
-│       │   └── StockServiceApplication.java
-│       └── resources/
-│           ├── application.yml # Database and application configurations
-│           └── data.sql       # Initial database seed script
-│
-├── DOCUMENTATION.md           # Detailed architecture & API documentation
-└── README.md                  # Project overview & quick start guide
 
 
 
