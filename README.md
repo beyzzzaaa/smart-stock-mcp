@@ -43,14 +43,12 @@ Make sure the following software is installed on your machine:
 - PostgreSQL 17
 - Git
 
----
-
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<username>/smart-stock-mcp.git
+git clone https://github.com/beyzzzaaa/smart-stock-mcp.git
 cd smart-stock-mcp
-
+```
 
 ### 2. Configure PostgreSQL
 
@@ -62,65 +60,79 @@ cd smart-stock-mcp
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/smart_stock
-    username: your_username
-    password: your_password
+    username: your_postgresql_username
+    password: your_postgresql_password
 ```
 
----
+The backend automatically creates the required database schema and loads the sample data from `data.sql` during startup.
 
-### 3. Run the Spring Boot Backend
+### 3. Build and Run the Spring Boot Backend
+
+Navigate to the `stock-service` directory:
 
 ```bash
 cd stock-service
+```
+
+Build and start the Spring Boot application:
+
+```bash
 mvn clean install
 mvn spring-boot:run
 ```
 
-The backend service will start and be available at:
+The backend service will be available at:
 
 ```text
 http://localhost:8081
 ```
 
----
-
 ### 4. Install Python Dependencies
 
-Go back to the project root directory and install dependencies for all Python components:
+Open a new terminal in the project root directory and install the dependencies for all Python components:
 
 ```bash
 pip install -r llm-host/requirements.txt -r stock-mcp/requirements.txt -r marketplace-mcp/requirements.txt
 ```
 
----
-
 ### 5. Configure the LLM
 
-1. Ensure you have an active LLM server running (e.g., Qwen 2.5-7B Instruct hosted via Google Colab, or running locally via Ollama/LM Studio).
-2. Open **[llm.py](file:///c:/Users/Master/Desktop/Project/smart-stock-mcp/llm-host/llm.py)** and update the `self.url` endpoint with your LLM server's API URL.
+1. Ensure that an LLM server is running. The system can connect to an LLM hosted remotely, such as Qwen 2.5-7B Instruct running on Google Colab, or to a locally hosted model using tools such as Ollama or LM Studio.
+2. Open **[llm.py](file:///c:/Users/Master/Desktop/Project/smart-stock-mcp/llm-host/llm.py)** and update the `self.url` variable with the API endpoint of your LLM server:
 
----
+```python
+self.url = "<YOUR_LLM_ENDPOINT>"
+```
+
+Replace `<YOUR_LLM_ENDPOINT>` with the actual API URL of the LLM service.
 
 ### 6. Start the Orchestrator Client
 
-Navigate to the orchestrator host folder and run the client application:
+From the project root directory, navigate to the `llm-host` folder:
 
 ```bash
-cd ../llm-host
+cd llm-host
+```
+
+Start the application:
+
+```bash
 python app.py
 ```
 
-Once started, the client will connect to both the Stock and Marketplace MCP servers, integrate with the Qwen LLM, and expect your natural-language queries in the terminal.
+Once started, the orchestrator client connects to the Stock MCP Server and Marketplace MCP Server, communicates with the configured LLM, generates execution plans, invokes the required MCP tools, and returns the final response to the user.
 
 ## Usage
 
-Once the backend service, LLM server, and orchestrator client are running, you can interact with the system using natural language queries in Turkish or English.
+Once the Spring Boot backend, LLM server, and orchestrator client are running, you can interact with the system using natural language queries in either Turkish or English.
 
-### Example Prompts:
-* **Check Inventory:** *"Depoda kritik stok seviyesinin altına düşen ürünleri listele."* (List products that have fallen below the critical stock level in the warehouse.)
-* **Plan Procurement:** *"Elektronik kategorisindeki eksik ürünler için satın alma planı yap."* (Create a purchase plan for missing items in the Electronics category.)
-* **Compare & Purchase:** *"iPhone için en ekonomik satıcı teklifini bul ve taslak sipariş oluştur."* (Find the most economic seller offer for iPhone and create a purchase draft.)
+Example queries include:
+- *Find the products that need replenishment.*
+- *Find the cheapest purchasing plan for products that are low in stock.*
+- *Show products that are currently out of stock.*
+- *Compare marketplace offers for the products that need replenishment.*
 
+The system interprets the request using the configured LLM, determines the required MCP tools, executes the appropriate operations, and returns the result in natural language.
 
 ---
 
