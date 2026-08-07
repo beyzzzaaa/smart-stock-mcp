@@ -43,6 +43,7 @@ class Replenishment(BaseModel):
     productId: int
     sku: str
     productName: str
+    categoryName: Optional[str] = None
     stockQuantity: int
     minimumStock: int
     targetStock: int

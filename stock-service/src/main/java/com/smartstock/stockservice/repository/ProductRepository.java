@@ -21,11 +21,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.stockQuantity <= p.minimumStock AND p.stockQuantity > 0")
     List<Product> findLowStock();
 
-    // Search by name, sku, or description
+    // Search by name, sku, description, subcategory name, or category name
     @Query("SELECT p FROM Product p WHERE " +
            "LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(p.sku) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%'))")
+           "LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.subcategory.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.subcategory.category.name) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<Product> searchProducts(@Param("query") String query);
 
     // List all products that need replenishment (stock_quantity <= minimum_stock)

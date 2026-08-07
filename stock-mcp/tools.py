@@ -2,48 +2,11 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent
 from services import ProductService
 import asyncio
+import json
 
 # Initialize Server and Service
 server = Server("stock-server")
 service = ProductService()
-
-
-def format_products(products):
-    if not products:
-        return "No products found."
-
-    lines = []
-    for p in products:
-        cat = (
-            p.subcategory.category.name
-            if p.subcategory and p.subcategory.category
-            else "N/A"
-        )
-        sub = (
-            p.subcategory.name
-            if p.subcategory
-            else "N/A"
-        )
-        brand = (
-            p.model.brand.name
-            if p.model and p.model.brand
-            else "N/A"
-        )
-        model_name = (
-            p.model.name
-            if p.model
-            else "N/A"
-        )
-
-        lines.append(
-            f"ID: {p.id} | SKU: {p.sku} | Name: {p.name}\n"
-            f"  - Category: {cat} > {sub} | Brand: {brand} | Model: {model_name}\n"
-            f"  - Stock: {p.stockQuantity} "
-            f"(Min: {p.minimumStock}, Target: {p.targetStock})\n"
-            f"  - Location: {p.warehouseInfo or 'N/A'}"
-        )
-
-    return "\n".join(lines)
 
 
 @server.list_tools()
@@ -56,11 +19,12 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {},
+                "additionalProperties": False,
             }
         ),
         Tool(
             name="search_products",
-            description="Search for products by name or SKU or description.",
+            description="Search for products by name, SKU, category, subcategory, or description.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -69,7 +33,8 @@ async def list_tools() -> list[Tool]:
                         "description": "Search query text."
                     }
                 },
-                "required": ["query"]
+                "required": ["query"],
+                "additionalProperties": False,
             }
         ),
         Tool(
@@ -77,7 +42,8 @@ async def list_tools() -> list[Tool]:
             description="List all products which are currently completely out of stock (quantity = 0)",
             inputSchema={
                 "type": "object",
-                "properties": {}
+                "properties": {},
+                "additionalProperties": False,
             }
         ),
         Tool(
@@ -86,14 +52,32 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {},
+                "additionalProperties": False,
             }
         ),
         Tool(
             name="calculate_replenishment",
-            description="Calculate replenishment quantities for products based on current stock levels and pending incoming orders.",
+            description="Calculate replenishment quantities for products based on current stock levels and pending incoming orders. Can optionally filter by category name, product ID, or a list of product IDs.",
             inputSchema={
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "description": "Category name to filter the products (case-insensitive)."
+                    },
+                    "product_id": {
+                        "type": "integer",
+                        "description": "Optional product ID to calculate replenishment for a specific product."
+                    },
+                    "product_ids": {
+                        "anyOf": [
+                            {"type": "array", "items": {"type": "integer"}},
+                            {"type": "integer"}
+                        ],
+                        "description": "Optional list of product IDs or a single product ID."
+                    }
+                },
+                "additionalProperties": False,
             }
         ),
         Tool(
@@ -115,7 +99,8 @@ async def list_tools() -> list[Tool]:
                         "description": "Expected delivery date (ISO-8601 string, optional)."
                     }
                 },
-                "required": ["product_id", "quantity"]
+                "required": ["product_id", "quantity"],
+                "additionalProperties": False,
             }
         ),
         Tool(
@@ -129,15 +114,29 @@ async def list_tools() -> list[Tool]:
                         "description": "ID of the pending order to receive."
                     }
                 },
-                "required": ["order_id"]
+                "required": ["order_id"],
+                "additionalProperties": False,
             }
         ),
         Tool(
             name="get_stock_replenishment_needed",
-            description="Get a list of all products that need stock replenishment, with calculated order quantities.",
+            description="Get a list of all products that need stock replenishment, with calculated order quantities. Can optionally filter by product ID or a list of product IDs.",
             inputSchema={
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "product_id": {
+                        "type": "integer",
+                        "description": "Optional product ID to get replenishment details for a specific product."
+                    },
+                    "product_ids": {
+                        "anyOf": [
+                            {"type": "array", "items": {"type": "integer"}},
+                            {"type": "integer"}
+                        ],
+                        "description": "Optional list of product IDs or a single product ID."
+                    }
+                },
+                "additionalProperties": False,
             }
         )
     ]
@@ -150,55 +149,83 @@ async def handle_call_tool(name: str, arguments: dict | None) -> list[TextConten
     try:
         if name == "list_products":
             products = await service.get_all_products()
+            result = {
+                "success": True,
+                "count": len(products),
+                "products": [p.model_dump() for p in products]
+            }
             return [
                 TextContent(
                     type="text",
-                    text=format_products(products)
+                    text=json.dumps(result, ensure_ascii=False)
                 )
             ]
 
         elif name == "search_products":
             query = arguments.get("query", "")
             products = await service.search_products(query)
-            if not products:
-                return [TextContent(type="text", text=f"No products matched search query: '{query}'")]
-
-            lines = []
-            for p in products:
-                lines.append(f"ID: {p.id} | SKU: {p.sku} | Name: {p.name} | Stock: {p.stockQuantity}")
-            return [TextContent(type="text", text="\n".join(lines))]
+            result = {
+                "success": True,
+                "query": query,
+                "count": len(products),
+                "products": [p.model_dump() for p in products]
+            }
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(result, ensure_ascii=False)
+                )
+            ]
 
         elif name == "list_out_of_stock":
             products = await service.get_out_of_stock_products()
-            if not products:
-                return [TextContent(type="text", text="No products are out of stock.")]
-
-            lines = []
-            for p in products:
-                lines.append(f"ID: {p.id} | SKU: {p.sku} | Name: {p.name} | Stock: {p.stockQuantity}")
-            return [TextContent(type="text", text="\n".join(lines))]
+            result = {
+                "success": True,
+                "count": len(products),
+                "products": [p.model_dump() for p in products]
+            }
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(result, ensure_ascii=False)
+                )
+            ]
 
         elif name == "list_low_stock":
             products = await service.get_low_stock_products()
-            if not products:
-                return [TextContent(type="text", text="No products are low on stock.")]
-
-            lines = []
-            for p in products:
-                lines.append(f"ID: {p.id} | SKU: {p.sku} | Name: {p.name} | Stock: {p.stockQuantity} (Min: {p.minimumStock})")
-            return [TextContent(type="text", text="\n".join(lines))]
+            result = {
+                "success": True,
+                "count": len(products),
+                "products": [p.model_dump() for p in products]
+            }
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(result, ensure_ascii=False)
+                )
+            ]
 
         elif name in ("calculate_replenishment", "get_stock_replenishment_needed"):
-            replenishments = await service.calculate_replenishment()
-            if not replenishments:
-                return [TextContent(type="text", text="No replenishment is needed at this time.")]
-            lines = []
-            for r in replenishments:
-                lines.append(
-                    f"Product ID: {r.productId} | SKU: {r.sku} | Name: {r.productName} | "
-                    f"Replenishment Needed: {r.replenishmentQuantityNeeded}"
+            product_id = arguments.get("product_id")
+            product_ids = arguments.get("product_ids")
+            replenishments = await service.calculate_replenishment(product_id, product_ids)
+            category = arguments.get("category")
+            if category:
+                replenishments = [
+                    r for r in replenishments
+                    if r.categoryName and r.categoryName.casefold() == category.casefold()
+                ]
+            result = {
+                "success": True,
+                "count": len(replenishments),
+                "replenishments": [r.model_dump() for r in replenishments]
+            }
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(result, ensure_ascii=False)
                 )
-            return [TextContent(type="text", text="\n".join(lines))]
+            ]
 
         elif name == "create_incoming_order":
             product_id = arguments.get("product_id")
@@ -206,29 +233,63 @@ async def handle_call_tool(name: str, arguments: dict | None) -> list[TextConten
             expected_delivery_date = arguments.get("expected_delivery_date")
             order = await service.create_incoming_order(product_id, quantity, expected_delivery_date)
             if order:
-                return [TextContent(type="text", text=f"Incoming order created successfully with ID: {order.id}")]
+                result = {
+                    "success": True,
+                    "order": order.model_dump()
+                }
             else:
-                return [TextContent(type="text", text="Failed to create incoming order")]
+                result = {
+                    "success": False,
+                    "error": "Failed to create incoming order"
+                }
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(result, ensure_ascii=False)
+                )
+            ]
 
         elif name == "receive_order":
             order_id = arguments.get("order_id")
             order = await service.receive_order(order_id)
             if order:
-                return [TextContent(type="text", text=f"Order {order.id} received successfully.")]
+                result = {
+                    "success": True,
+                    "order": order.model_dump()
+                }
             else:
-                return [TextContent(type="text", text="Failed to receive order.")]
+                result = {
+                    "success": False,
+                    "error": "Failed to receive order."
+                }
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(result, ensure_ascii=False)
+                )
+            ]
 
         else:
-            return [TextContent(type="text", text=f"Unknown tool name: {name}")]
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Unknown tool name: {name}"}, ensure_ascii=False)
+                )
+            ]
 
     except Exception as e:
-        return [TextContent(type="text", text=f"Error executing tool {name}: {str(e)}")]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Error executing tool {name}: {str(e)}"}, ensure_ascii=False)
+            )
+        ]
 
 
 if __name__ == "__main__":
     from mcp.server.stdio import stdio_server
     from mcp.server.models import InitializationOptions
-    import mcp.types as types
+    from mcp.server.lowlevel import NotificationOptions
 
     async def main():
         async with stdio_server() as (read_stream, write_stream):
@@ -239,7 +300,7 @@ if __name__ == "__main__":
                     server_name="stock-server",
                     server_version="0.1.0",
                     capabilities=server.get_capabilities(
-                        notification_options=types.NotificationOptions(),
+                        notification_options=NotificationOptions(),
                         experimental_capabilities={},
                     ),
                 ),

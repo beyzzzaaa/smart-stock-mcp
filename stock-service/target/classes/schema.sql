@@ -1,1 +1,0 @@
--- Schema initialization placeholder. Database schema is automatically managed by Hibernate (ddl-auto: update).

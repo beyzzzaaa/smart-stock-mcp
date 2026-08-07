@@ -33,7 +33,36 @@ public class MarketplaceService {
         if (query == null || query.trim().isEmpty()) {
             return offerRepository.findAll();
         }
-        return offerRepository.searchOffers(query);
+        String[] terms = query.trim().split("\\s+");
+        List<MarketplaceOffer> all = offerRepository.findAll();
+        return all.stream().filter(o -> {
+            for (String term : terms) {
+                String lowerTerm = term.toLowerCase();
+                Product p = o.getProduct();
+                MarketplaceSeller s = o.getSeller();
+                boolean match = (p != null && (
+                                    (p.getName() != null && p.getName().toLowerCase().contains(lowerTerm)) ||
+                                    (p.getSku() != null && p.getSku().toLowerCase().contains(lowerTerm)) ||
+                                    (p.getDescription() != null && p.getDescription().toLowerCase().contains(lowerTerm)) ||
+                                    (p.getSubcategory() != null && p.getSubcategory().getName() != null && p.getSubcategory().getName().toLowerCase().contains(lowerTerm)) ||
+                                    (p.getSubcategory() != null && p.getSubcategory().getCategory() != null && p.getSubcategory().getCategory().getName() != null && p.getSubcategory().getCategory().getName().toLowerCase().contains(lowerTerm)) ||
+                                    (p.getModel() != null && p.getModel().getName() != null && p.getModel().getName().toLowerCase().contains(lowerTerm)) ||
+                                    (p.getModel() != null && p.getModel().getBrand() != null && p.getModel().getBrand().getName() != null && p.getModel().getBrand().getName().toLowerCase().contains(lowerTerm))
+                                )) ||
+                                (s != null && s.getName() != null && s.getName().toLowerCase().contains(lowerTerm));
+                if (!match) {
+                    return false;
+                }
+            }
+            return true;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    public List<MarketplaceOffer> getOffersByProductId(Long productId) {
+        if (productId == null) {
+            return new ArrayList<>();
+        }
+        return offerRepository.findByProductId(productId);
     }
 
     public MarketplaceComparisonResponseDto compareOffers(Long productId) {

@@ -29,6 +29,14 @@ class MarketplaceService:
             response.raise_for_status()
             return [MarketplaceOffer(**item) for item in response.json()]
 
+    async def get_offers_by_product_id(self, product_id: int) -> List[MarketplaceOffer]:
+        """Fetch marketplace offers for a specific product ID."""
+        async with httpx.AsyncClient() as client:
+            params = {"productId": product_id}
+            response = await client.get(f"{self.base_url}/api/marketplace/offers", params=params)
+            response.raise_for_status()
+            return [MarketplaceOffer(**item) for item in response.json()]
+
     async def compare_offers(self, product_id: int) -> MarketplaceComparisonResponse:
         """Compare offers for a specific product ID using TOPSIS scoring."""
         async with httpx.AsyncClient() as client:

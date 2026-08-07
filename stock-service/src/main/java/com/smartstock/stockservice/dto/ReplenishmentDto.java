@@ -13,6 +13,7 @@ public class ReplenishmentDto {
     private Long productId;
     private String sku;
     private String productName;
+    private String categoryName;
     private Integer stockQuantity;
     private Integer minimumStock;
     private Integer targetStock;

@@ -41,7 +41,27 @@ public class ProductService {
     }
 
     public List<Product> searchProducts(String query) {
-        return productRepository.searchProducts(query);
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        String[] terms = query.trim().split("\\s+");
+        List<Product> all = productRepository.findAll();
+        return all.stream().filter(p -> {
+            for (String term : terms) {
+                String lowerTerm = term.toLowerCase();
+                boolean match = (p.getName() != null && p.getName().toLowerCase().contains(lowerTerm)) ||
+                                (p.getSku() != null && p.getSku().toLowerCase().contains(lowerTerm)) ||
+                                (p.getDescription() != null && p.getDescription().toLowerCase().contains(lowerTerm)) ||
+                                (p.getSubcategory() != null && p.getSubcategory().getName() != null && p.getSubcategory().getName().toLowerCase().contains(lowerTerm)) ||
+                                (p.getSubcategory() != null && p.getSubcategory().getCategory() != null && p.getSubcategory().getCategory().getName() != null && p.getSubcategory().getCategory().getName().toLowerCase().contains(lowerTerm)) ||
+                                (p.getModel() != null && p.getModel().getName() != null && p.getModel().getName().toLowerCase().contains(lowerTerm)) ||
+                                (p.getModel() != null && p.getModel().getBrand() != null && p.getModel().getBrand().getName() != null && p.getModel().getBrand().getName().toLowerCase().contains(lowerTerm));
+                if (!match) {
+                    return false;
+                }
+            }
+            return true;
+        }).collect(Collectors.toList());
     }
 
     @Transactional
@@ -58,8 +78,13 @@ public class ProductService {
      * Calculates replenishment needs for products that have stock levels at or below their minimum stock threshold.
      * Takes existing pending incoming orders into account.
      */
-    public List<ReplenishmentDto> calculateReplenishment() {
-        List<Product> needyProducts = productRepository.findNeedsReplenishment();
+    public List<ReplenishmentDto> calculateReplenishment(List<Long> productIds) {
+        List<Product> needyProducts;
+        if (productIds == null || productIds.isEmpty()) {
+            needyProducts = productRepository.findNeedsReplenishment();
+        } else {
+            needyProducts = productRepository.findAllById(productIds);
+        }
         
         return needyProducts.stream().map(product -> {
             Integer pendingQty = incomingOrderRepository.sumPendingQuantityByProduct(product);
@@ -67,10 +92,16 @@ public class ProductService {
             // Ensure we don't request negative values if target stock was exceeded or orders cover it
             int finalNeeded = Math.max(0, needed);
             
+            String categoryName = null;
+            if (product.getSubcategory() != null && product.getSubcategory().getCategory() != null) {
+                categoryName = product.getSubcategory().getCategory().getName();
+            }
+            
             return ReplenishmentDto.builder()
                     .productId(product.getId())
                     .sku(product.getSku())
                     .productName(product.getName())
+                    .categoryName(categoryName)
                     .stockQuantity(product.getStockQuantity())
                     .minimumStock(product.getMinimumStock())
                     .targetStock(product.getTargetStock())

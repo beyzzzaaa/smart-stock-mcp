@@ -1,5 +1,5 @@
 import httpx
-from typing import List, Optional
+from typing import List, Optional, Union
 from models import Product, Replenishment, IncomingOrder
 
 class ProductService:
@@ -34,12 +34,22 @@ class ProductService:
             response.raise_for_status()
             return [Product(**item) for item in response.json()]
 
-    async def calculate_replenishment(self) -> List[Replenishment]:
+    async def calculate_replenishment(self, product_id: Optional[int] = None, product_ids: Optional[Union[int, List[int]]] = None) -> List[Replenishment]:
         """Calculate quantity to order for products below minimum stock."""
+        params = {}
+        if product_ids is not None:
+            if isinstance(product_ids, int):
+                params["productIds"] = [product_ids]
+            elif isinstance(product_ids, list):
+                params["productIds"] = product_ids
+        elif product_id is not None:
+            params["productIds"] = [product_id]
+
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.base_url}/api/products/replenishment")
+            response = await client.get(f"{self.base_url}/api/products/replenishment", params=params)
             response.raise_for_status()
-            return [Replenishment(**item) for item in response.json()]
+            replenishments = [Replenishment(**item) for item in response.json()]
+            return replenishments
 
     async def create_incoming_order(self, product_id: int, quantity: int, expected_delivery_date: Optional[str] = None) -> IncomingOrder:
         """Create a pending incoming/replenishment order."""

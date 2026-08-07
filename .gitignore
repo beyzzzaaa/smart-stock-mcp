@@ -1,0 +1,68 @@
+# ==========================================
+# 1. HASSAS BİLGİLER & VERİTABANI GÜVENLİĞİ
+# ==========================================
+# Ortam Değişkenleri
+.env
+*.env
+.env.*
+
+# PostgreSQL & Spring Boot Hassas Ayarlar
+# (Hassas şifre içeren ayar dosyalarını engeller)
+application-local.properties
+application-local.yml
+application-dev.properties
+application-dev.yml
+secrets.properties
+secrets.yml
+
+# ==========================================
+# 2. SPRING BOOT / JAVA / MAVEN
+# ==========================================
+# Derlenmiş Kodlar ve Paketler
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven Geçici Dosyaları
+.m2/
+.mvn/
+mvnw
+mvnw.cmd
+
+# ==========================================
+# 3. PYTHON / LLM HOST / MCP
+# ==========================================
+# Sanal Ortamlar (Virtual Environments)
+venv/
+.venv/
+env/
+ENV/
+
+# Önbellek ve Derleme Dosyaları
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# ==========================================
+# 4. İDE & EDİTÖR AYARLARI
+# ==========================================
+.vscode/
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ==========================================
+# 5. İŞLETİM SİSTEMİ & LOG DOSYALARI
+# ==========================================
+# PostgreSQL ve Sistem Logları
+*.log
+logs/
+
+# İşletim Sistemi Artıkları
+.DS_Store
+Thumbs.db

@@ -52,8 +52,9 @@ public class ProductController {
     }
 
     @GetMapping("/replenishment")
-    public ResponseEntity<List<ReplenishmentDto>> calculateReplenishment() {
-        return ResponseEntity.ok(productService.calculateReplenishment());
+    public ResponseEntity<List<ReplenishmentDto>> calculateReplenishment(
+            @RequestParam(required = false) List<Long> productIds) {
+        return ResponseEntity.ok(productService.calculateReplenishment(productIds));
     }
 
     @PostMapping

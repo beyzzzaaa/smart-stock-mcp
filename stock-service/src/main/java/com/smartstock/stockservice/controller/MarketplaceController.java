@@ -25,7 +25,12 @@ public class MarketplaceController {
     }
 
     @GetMapping("/offers")
-    public ResponseEntity<List<MarketplaceOffer>> searchOffers(@RequestParam(required = false) String query) {
+    public ResponseEntity<List<MarketplaceOffer>> searchOffers(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Long productId) {
+        if (productId != null) {
+            return ResponseEntity.ok(marketplaceService.getOffersByProductId(productId));
+        }
         return ResponseEntity.ok(marketplaceService.searchOffers(query));
     }
 
