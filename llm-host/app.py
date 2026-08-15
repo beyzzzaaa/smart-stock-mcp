@@ -49,8 +49,41 @@ def parse_execution_plan(text: str) -> dict:
         raise ValueError("LLM cevabında JSON bulunamadı.")
 
     json_str = remove_json_comments(cleaned[start_index:])
-    decoder = json.JSONDecoder(strict=False)
-    parsed, _ = decoder.raw_decode(json_str)
+    
+    try:
+        decoder = json.JSONDecoder(strict=False)
+        parsed, _ = decoder.raw_decode(json_str)
+    except Exception as parse_err:
+        repaired_str = json_str
+        import re
+        pattern = r'"(final_response|answer)"\s*:\s*"(.*)"\s*\}\s*[^}]*$'
+        match = re.search(pattern, json_str, re.DOTALL)
+        if match:
+            key = match.group(1)
+            val = match.group(2)
+            escaped_val = json.dumps(val)
+            start_idx = match.start()
+            repaired_str = json_str[:start_idx] + f'"{key}": {escaped_val}\n}}'
+        
+        try:
+            decoder = json.JSONDecoder(strict=False)
+            parsed, _ = decoder.raw_decode(repaired_str)
+        except Exception:
+            for key in ['"final_response"', '"answer"']:
+                idx = json_str.find(key)
+                if idx != -1:
+                    comma_idx = json_str.rfind(",", 0, idx)
+                    if comma_idx != -1:
+                        tmp_str = json_str[:comma_idx].strip() + "\n}"
+                        try:
+                            decoder = json.JSONDecoder(strict=False)
+                            parsed, _ = decoder.raw_decode(tmp_str)
+                            repaired_str = tmp_str
+                            break
+                        except Exception:
+                            pass
+            else:
+                raise parse_err
 
     if parsed.get("type") != "execution_plan":
         raise ValueError("Beklenen response type: execution_plan")
@@ -134,8 +167,8 @@ def parse_execution_plan(text: str) -> dict:
 
     elif goal == "REASON":
         for step in steps:
-            if step["tool"] in WRITE_TOOLS or step["tool"] == "create_procurement_plan":
-                raise ValueError("REASON planı yazma veya satın alma planlama araçları (create_procurement_plan, write tools) içeremez.")
+            if step["tool"] in WRITE_TOOLS:
+                raise ValueError("REASON planı yazma araçları (write tools) içeremez.")
 
     return parsed
 
@@ -283,7 +316,10 @@ def get_nested_value(data: dict, path: str):
     current = data
     for part in path.split("."):
         if isinstance(current, dict):
-            current = current.get(part)
+            val = current.get(part)
+            if val is None and part in {"id", "productId", "product_id"}:
+                val = current.get("productId") or current.get("product_id") or current.get("id")
+            current = val
         elif isinstance(current, list):
             if part.isdigit():
                 idx = int(part)
@@ -404,6 +440,45 @@ def update_last_product(state: ConversationState, product_id: int, product_name:
         state.last_product = {"id": product_id, "name": product_name}
         state.last_replenishment = None
 
+def item_matches_query(item_name: str, query: str) -> bool:
+    if not item_name or not query:
+        return False
+    query_words = [w.strip(".,!?\"'()").lower() for w in query.split()]
+    query_words = [w for w in query_words if len(w) >= 3 and not w.isdigit()]
+    
+    item_name_lower = item_name.lower()
+    for qw in query_words:
+        if qw in item_name_lower:
+            return True
+        item_words = [iw.lower() for iw in item_name.split() if len(iw) >= 3]
+        for iw in item_words:
+            if iw in qw:
+                return True
+    return False
+
+def filter_list_by_query(items: list, query: str) -> list:
+    if not query or not items:
+        return items
+    
+    matching_items = []
+    for item in items:
+        name = None
+        if isinstance(item, dict):
+            name = item.get("productName") or item.get("product_name") or item.get("name") or item.get("title")
+        elif hasattr(item, "productName"):
+            name = getattr(item, "productName")
+        elif hasattr(item, "product_name"):
+            name = getattr(item, "product_name")
+        elif hasattr(item, "name"):
+            name = getattr(item, "name")
+            
+        if name and item_matches_query(name, query):
+            matching_items.append(item)
+            
+    if matching_items and len(matching_items) < len(items):
+        return matching_items
+    return items
+
 def resolve_context_path(state: ConversationState, path: str):
     parts = path.split(".")
     first = parts[0]
@@ -417,12 +492,47 @@ def resolve_context_path(state: ConversationState, path: str):
         current = ref.get("data")
     else:
         current = getattr(state, first, None)
+
+    # Try to filter current list or nested lists using the last user query keywords
+    if state.last_user_message:
+        if isinstance(current, list):
+            current = filter_list_by_query(current, state.last_user_message)
+        elif isinstance(current, dict):
+            current = dict(current)
+            for list_key in ["items", "products", "replenishments", "offers"]:
+                if list_key in current and isinstance(current[list_key], list):
+                    current[list_key] = filter_list_by_query(current[list_key], state.last_user_message)
         
     for part in parts[1:]:
         if current is None:
             return None
         if isinstance(current, dict):
-            current = current.get(part)
+            val = current.get(part)
+            if val is None:
+                # Try to project over a nested list of items/products/replenishments/offers if part not directly in dict
+                nested_list = None
+                for list_key in ["items", "products", "replenishments", "offers"]:
+                    if list_key in current and isinstance(current[list_key], list):
+                        nested_list = current[list_key]
+                        break
+                if nested_list is not None:
+                    projected = []
+                    for item in nested_list:
+                        if isinstance(item, dict):
+                            item_val = item.get(part)
+                            if item_val is None and part in {"id", "productId", "product_id"}:
+                                item_val = item.get("productId") or item.get("product_id") or item.get("id")
+                            if item_val is not None:
+                                projected.append(item_val)
+                        elif hasattr(item, part):
+                            item_val = getattr(item, part)
+                            if item_val is not None:
+                                projected.append(item_val)
+                    current = projected
+                else:
+                    current = None
+            else:
+                current = val
         elif isinstance(current, list):
             if part.isdigit():
                 idx = int(part)
@@ -448,6 +558,11 @@ def resolve_context_path(state: ConversationState, path: str):
             current = getattr(current, part)
         else:
             return None
+            
+    if isinstance(current, list) and len(current) == 1:
+        if not isinstance(current[0], (dict, list)):
+            return current[0]
+            
     return current
 
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "conversation_state.json")
@@ -1349,22 +1464,7 @@ async def main():
                 messages = [
                     {"role": "system", "content": system_prompt}
                 ]
-                
-                # Strip final_response from previous assistant JSON logs to prevent prompt bloat and copycat behavior
-                clean_history = []
-                for msg in state.history:
-                    if msg.get("role") == "assistant":
-                        try:
-                            content_json = json.loads(msg["content"])
-                            if isinstance(content_json, dict):
-                                content_json.pop("final_response", None)
-                                clean_history.append({"role": "assistant", "content": json.dumps(content_json, ensure_ascii=False)})
-                                continue
-                        except Exception:
-                            pass
-                    clean_history.append(msg)
-                
-                messages.extend(clean_history)
+                messages.extend(state.history)
                 messages.append({"role": "user", "content": user_query})
 
                 # Step 1: Generate initial plan
@@ -1406,6 +1506,24 @@ async def main():
                     print(f"\n[PLAN EXECUTOR HATA] Adım '{execution.get('failed_step')}' ({execution.get('failed_tool')}) başarısız oldu: {execution.get('error')}")
                     print("[AI Planı Onarıyor...]")
                     
+                    rules_list = [
+                        "- Preserve the user intent.",
+                        f"- Preserve the original plan goal: {goal}.",
+                        "- Use only argument names present in the tool schema.",
+                        "- Never repeat the same invalid arguments.",
+                        "- Every tool call must be a separate step with a unique step ID (e.g. step_1, step_2). Do not embed tool calls/functions inside $from. The $from reference must strictly start with a valid step ID of a preceding step (e.g., 'step_1.products.0.id')."
+                    ]
+                    if goal in ("DRAFT", "ORDER"):
+                        rules_list.extend([
+                            "- Do not rebuild an existing procurement plan during a draft/order repair.",
+                            "- Preserve the selected products, filters, seller ratings, and objective.",
+                            "- Repair only the invalid draft conversion.",
+                            "- Never replace DRAFT intent with PLAN.",
+                            "- If the source is products, do not use replenishments_to_items.",
+                        ])
+                    
+                    repair_rules_str = "\n".join(rules_list)
+
                     repair_messages = [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": (
@@ -1417,20 +1535,7 @@ async def main():
                             "Create a corrected execution plan. "
                             "Do not repeat the failed call with identical arguments.\n"
                             "Rules for repair:\n"
-                            "- Preserve the user intent.\n"
-                            "- Do not rebuild an existing procurement plan during a draft/order repair.\n"
-                            "- Preserve the selected products, filters, seller ratings, and objective.\n"
-                            "- Repair only the invalid draft conversion.\n"
-                            "- Never replace DRAFT intent with PLAN.\n"
-                            "- Use only argument names present in the tool schema.\n"
-                            "- Never repeat the same invalid arguments.\n"
-                            "- If the source is products, do not use replenishments_to_items.\n"
-                            "- If the original goal is REASON:\n"
-                            "  1. ALWAYS keep goal='REASON'.\n"
-                            "  2. NEVER add write tools like 'create_purchase_draft', 'place_order', or the procurement planning tool 'create_procurement_plan'.\n"
-                            "  3. Prefer cached context_sources when available (e.g., 'last_cheapest_plan', 'last_fastest_plan').\n"
-                            "  4. DO NOT invent products, prices, sellers, or quantities.\n"
-                            "- NEVER include the 'final_response' key in the repaired plan output.\n"
+                            f"{repair_rules_str}\n"
                             "- FILTER PLACEMENT RULES:\n"
                             "  1. Product category filters belong to stock/replenishment tools (e.g., category parameter in calculate_replenishment, like calculate_replenishment(category='Elektronik')).\n"
                             "  2. Seller rating filters belong only to marketplace procurement tools (e.g., filters.min_rating in create_procurement_plan).\n"
@@ -1508,20 +1613,6 @@ async def main():
                     if goal == "REASON":
                         print("[AI Sonuçları Yorumluyor...]")
                         cleaned_results = clean_tool_results_for_reasoning(execution["results"])
-                        
-                        # Resolve and inject context sources if present
-                        context_sources = plan.get("context_sources")
-                        if context_sources:
-                            cleaned_results["context_sources"] = {}
-                            for src in context_sources:
-                                resolved = resolve_context_path(state, src)
-                                if resolved:
-                                    if hasattr(resolved, "__dataclass_fields__"):
-                                        resolved_data = asdict(resolved)
-                                    else:
-                                        resolved_data = resolved
-                                    cleaned_results["context_sources"][src] = compact_plan_for_prompt(resolved_data)
-                        
                         reasoning_prompt = get_reasoning_prompt(user_query, cleaned_results)
                         reasoning_messages = [
                             {"role": "system", "content": reasoning_prompt}
@@ -1615,4 +1706,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nKapatılıyor...")
-                    
+                     

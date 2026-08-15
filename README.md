@@ -53,7 +53,7 @@ cd smart-stock-mcp
 ### 2. Configure PostgreSQL
 
 1. Create a PostgreSQL database named `smart_stock`.
-2. Open **[application.yml](file:///c:/Users/Master/Desktop/Project/smart-stock-mcp/stock-service/src/main/resources/application.yml)** in the `stock-service/src/main/resources` folder.
+2. Open **[application.yml](stock-service/src/main/resources/application.yml)** in the `stock-service/src/main/resources` folder.
 3. Update the database credentials to match your local PostgreSQL configuration:
 
 ```yaml
@@ -98,7 +98,7 @@ pip install -r llm-host/requirements.txt -r stock-mcp/requirements.txt -r market
 ### 5. Configure the LLM
 
 1. Ensure that an LLM server is running. The system can connect to an LLM hosted remotely, such as Qwen 2.5-7B Instruct running on Google Colab, or to a locally hosted model using tools such as Ollama or LM Studio.
-2. Open **[llm.py](file:///c:/Users/Master/Desktop/Project/smart-stock-mcp/llm-host/llm.py)** and update the `self.url` variable with the API endpoint of your LLM server:
+2. Open **[llm.py](llm-host/llm.py)** and update the `self.url` variable with the API endpoint of your LLM server:
 
 ```python
 self.url = "<YOUR_LLM_ENDPOINT>"

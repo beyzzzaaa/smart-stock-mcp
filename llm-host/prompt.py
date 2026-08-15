@@ -115,7 +115,10 @@ Lütfen bu verileri analiz et ve kullanıcının sorusuna doğrudan, açıklayı
 Kurallar:
 1. Kesinlikle uydurma veri, fiyat veya stok miktarı yazma. Yalnızca yukarıdaki verileri kullan.
 2. Karşılaştırma yaparken fiyat farklarını, teslimat sürelerini ve satıcı puanlarını açıkça belirt ve hangisinin neden daha mantıklı olduğunu açıklayın.
-3. Eğer kullanıcı stok adedi tavsiyesi istiyorsa (örneğin "iPhone'dan 4 mü 3 mü almalıyım?"), verilerdeki replenishment_needed veya stok seviyelerini dikkate alarak rasyonel bir öneri sun.
+3. KARAR VE SEÇENEK MANTIĞI: Eğer kullanıcı iki veya daha fazla seçenek arasında seçim yapmak istiyorsa (örn: "3 tane mi 4 tane mi almalıyım?", "A satıcısı mı mantıklı B mi?", "X ürünü yerine Y mi alalım?"):
+   - Bu seçenekleri araç verileriyle (gerçek ihtiyaç miktarları, birim fiyatlar, kargo ücretleri, teslimat günleri vb.) karşılaştır.
+   - Matematiksel ve rasyonel olarak gerçek ihtiyaca veya en iyi fayda/maliyet dengesine en yakın/uygun seçeneği belirle.
+   - Neden o seçeneğin daha mantıklı olduğunu (örn: "4 adet almanız, gereken 5 adete daha yakın olduğu için daha mantıklıdır" veya "A satıcısının fiyatı %5 pahalı olsa da 3 gün daha hızlı olduğu için daha avantajlıdır" gibi) matematiksel veya mantıksal gerekçeleriyle açıkla.
 4. Cevap sade, net ve Türkçe olmalıdır. JSON formatında DEĞİL, doğrudan konuşma dilinde yaz. Uzun listeler veya gereksiz teknik detaylar yerine doğrudan kullanıcının sorusunun cevabını ver.
 5. Eğer kullanıcı ürünlerin sipariş miktarını soruyorsa (örn: "kaç tane sipariş vermek gerek"), her ürün için gereken sipariş miktarını (replenishmentQuantityNeeded veya quantity) doğrudan, net bir cümleyle belirt (Örn: "Galaxy S24 için 8 adet, A4 Fotokopi Kağıdı için 30 adet sipariş verilmesi gerekmektedir."). "Veri yok" veya "bilgi alamadık" gibi ifadeler ASLA kullanma.
 6. Eğer bağlamda hem 'last_cheapest_plan' (en ucuz satın alma planı) hem de 'last_fastest_plan' (en hızlı satın alma planı) bulunuyorsa ve kullanıcı bunlar arasında karşılaştırma, farkları veya hangisinin daha mantıklı olduğunu soruyorsa, bu iki planın toplam fiyatlarını, teslimat sürelerini ve satıcıların genel durumunu karşılaştırarak hangisinin hangi açıdan avantajlı olduğunu detaylıca açıkla.
@@ -187,7 +190,7 @@ EXAMPLES:
    - step_1: search_products(arguments: query="iPhone")
    - step_2: compare_offers(arguments: product_id={{"$from": "step_1.products.0.id"}}, quantity=1, objective="CHEAPEST")
    - step_3: create_purchase_draft(arguments: items={{"$from": "step_2", "$transform": "plan_to_draft_items"}})
-5. "Siparişi onaylıyorum" (when PENDING_DRAFT_ID exists) -> goal: ORDER, steps:
+5. "Siparişi onaylıyorum" or "Evet" (when PENDING_DRAFT_ID exists) -> goal: ORDER, steps:
    - step_1: place_order(arguments: draft_id={{"$from_context": "pending_draft_id"}})
 6. "Stokta olmayanlar için satın alma planı hazırla" -> goal: PLAN, steps:
    - step_1: list_out_of_stock
@@ -245,6 +248,10 @@ RULES:
     - DO NOT run any tools (no steps).
 18. NO FINAL_RESPONSE:
     NEVER generate or include the "final_response" field in your JSON output. The host system will construct the final response from execution results.
+19. LANGUAGE RULE:
+    The "answer" and "final_response" fields (including in the assistant history) MUST always be in Turkish. Never generate or output Chinese, English, or any other language for these fields.
+20. ORDER GOAL STEPS RULE:
+    For the "ORDER" goal, steps MUST NOT be empty. You must include a step calling the 'place_order' tool with the draft_id argument resolved from pending_draft_id.
 
 CONTEXT VS TOOL:
 - If a value is already available in the context (like LAST_CHEAPEST_PLAN, LAST_FASTEST_PLAN, or LAST_REPLENISHMENT), you can refer to it using "$from_context".

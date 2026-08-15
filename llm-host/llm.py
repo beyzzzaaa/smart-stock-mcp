@@ -2,7 +2,7 @@ import requests
 
 class LLMService:
     def __init__(self):
-        self.url = "https://room-transmit-conclusion-utility.trycloudflare.com/generate"
+        self.url = "https://engine-evidence-factor-commented.trycloudflare.com/generate"
 
     def generate(self, messages):
         prompt_parts = []
