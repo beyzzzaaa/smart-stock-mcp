@@ -12,10 +12,12 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: create
-    show-sql: true
+      # Keep existing inventory and order data when the service restarts.
+      # Override with DB_DDL_AUTO=create only when a full local reset is intended.
+      ddl-auto: ${DB_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
@@ -23,5 +25,5 @@ spring:
 
   sql:
     init:
-      mode: always
+      mode: ${SQL_INIT_MODE:always}
       data-locations: classpath:data.sql

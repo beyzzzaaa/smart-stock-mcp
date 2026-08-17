@@ -64,7 +64,7 @@ spring:
     password: your_postgresql_password
 ```
 
-The backend automatically creates the required database schema and loads the sample data from `data.sql` during startup.
+The backend updates the required database schema without deleting existing inventory or order data and idempotently loads the sample data from `data.sql` during startup. To intentionally reset a local database, start the backend with `DB_DDL_AUTO=create`. SQL logging is disabled by default and can be enabled with `JPA_SHOW_SQL=true`.
 
 ### 3. Build and Run the Spring Boot Backend
 
@@ -187,5 +187,3 @@ The Spring Boot backend (`stock-service`) provides the following REST API endpoi
 * **Multi-Agent Negotiation:** Enable a seller agent and buyer agent to dynamically negotiate prices for bulk orders.
 
 ---
-
-
