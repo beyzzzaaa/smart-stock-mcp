@@ -1,8 +1,12 @@
+import os
+
 import requests
+
 
 class LLMService:
     def __init__(self):
-        self.url = "https://engine-evidence-factor-commented.trycloudflare.com/generate"
+        self.url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+        self.model = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 
     def generate(self, messages):
         prompt_parts = []
@@ -19,8 +23,13 @@ class LLMService:
         print(f"Prompt token sayısı (tahmini): {len(prompt) // 4}")
         
         payload = {
+            "model": self.model,
             "prompt": prompt,
-            "max_new_tokens": 512
+            "stream": False,
+            "think": False,
+            "options": {
+                "num_predict": 512
+            }
         }
         
         response = requests.post(
@@ -37,4 +46,6 @@ class LLMService:
             ) from exc
             
         data = response.json()
+        if "response" not in data:
+            raise RuntimeError(f"Ollama cevabında 'response' alanı yok: {data}")
         return data["response"]

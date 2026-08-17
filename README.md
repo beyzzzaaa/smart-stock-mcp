@@ -64,7 +64,7 @@ spring:
     password: your_postgresql_password
 ```
 
-The backend automatically creates the required database schema and loads the sample data from `data.sql` during startup.
+The backend updates the required database schema without deleting existing inventory or order data and idempotently loads the sample data from `data.sql` during startup. To intentionally reset a local database, start the backend with `DB_DDL_AUTO=create`. SQL logging is disabled by default and can be enabled with `JPA_SHOW_SQL=true`.
 
 ### 3. Build and Run the Spring Boot Backend
 
@@ -97,14 +97,19 @@ pip install -r llm-host/requirements.txt -r stock-mcp/requirements.txt -r market
 
 ### 5. Configure the LLM
 
-1. Ensure that an LLM server is running. The system can connect to an LLM hosted remotely, such as Qwen 2.5-7B Instruct running on Google Colab, or to a locally hosted model using tools such as Ollama or LM Studio.
-2. Open **[llm.py](llm-host/llm.py)** and update the `self.url` variable with the API endpoint of your LLM server:
+The orchestrator uses Ollama at `http://localhost:11434` and the `qwen3:8b` model by default. Start Ollama and make sure the model is available:
 
-```python
-self.url = "<YOUR_LLM_ENDPOINT>"
+```bash
+ollama serve
+ollama pull qwen3:8b
 ```
 
-Replace `<YOUR_LLM_ENDPOINT>` with the actual API URL of the LLM service.
+The endpoint and model can be overridden without editing the code:
+
+```powershell
+$env:OLLAMA_URL = "http://localhost:11434/api/generate"
+$env:OLLAMA_MODEL = "qwen3:8b"
+```
 
 ### 6. Start the Orchestrator Client
 
@@ -187,5 +192,3 @@ The Spring Boot backend (`stock-service`) provides the following REST API endpoi
 * **Multi-Agent Negotiation:** Enable a seller agent and buyer agent to dynamically negotiate prices for bulk orders.
 
 ---
-
-
