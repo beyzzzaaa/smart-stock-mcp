@@ -192,3 +192,4 @@ The Spring Boot backend (`stock-service`) provides the following REST API endpoi
 * **Multi-Agent Negotiation:** Enable a seller agent and buyer agent to dynamically negotiate prices for bulk orders.
 
 ---
+
